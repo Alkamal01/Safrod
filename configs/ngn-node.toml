@@ -1,0 +1,10 @@
+# Demo node for the NGN-side provider (payer / source in the v0.1 demo
+# flow). Points at the Core Lightning regtest node started per
+# docs/regtest.md.
+identity_key_hex = "74428f2fda21cdd9baa36be196aac64572a6c285899335886b8ebdfdbecfcb69"
+peer_identity_key_hex = "026f487e7a62b395f2b5e6661815c6e55b4fbb39ee1e2031ed79bdf814da503c53"
+listen_addr = "127.0.0.1:8081"
+currency = "Ngn"
+peer_addr = "http://127.0.0.1:8082"
+lightning_rpc_socket = "/home/kaftandev/.local/share/safro-regtest/data/node1/regtest/lightning-rpc"
+settlement_store_path = "/home/kaftandev/.local/share/safro-regtest/data/ngn-settlements.json"

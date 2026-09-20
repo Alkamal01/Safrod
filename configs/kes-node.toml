@@ -1,0 +1,10 @@
+# Demo node for the KES-side provider (payee / destination in the v0.1
+# demo flow — it fronts the fiat payout and is reimbursed over Lightning).
+# Points at the Core Lightning regtest node started per docs/regtest.md.
+identity_key_hex = "81ae436b52140d038f67fbf22d15f4b0bd4a6450c32a26e817ab2ad4b06e745e"
+peer_identity_key_hex = "026bf58795f1972fdc23dd9f39edd70373108dd32c85e1cbf2af8972492530e68a"
+listen_addr = "127.0.0.1:8082"
+currency = "Kes"
+peer_addr = "http://127.0.0.1:8081"
+lightning_rpc_socket = "/home/kaftandev/.local/share/safro-regtest/data/node2/regtest/lightning-rpc"
+settlement_store_path = "/home/kaftandev/.local/share/safro-regtest/data/kes-settlements.json"
