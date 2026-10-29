@@ -2186,6 +2186,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 
 [[package]]
+name = "safrod-api"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "chrono",
+ "hex",
+ "http-body-util",
+ "rand 0.8.8",
+ "safrod-bitcoin",
+ "safrod-core",
+ "safrod-lightning",
+ "safrod-sandbox",
+ "safrod-storage",
+ "safrod-webhooks",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "subtle",
+ "thiserror 1.0.69",
+ "tokio",
+ "tower",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "safrod-bitcoin"
 version = "0.1.0"
 dependencies = [

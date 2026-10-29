@@ -1,0 +1,33 @@
+[package]
+name = "safrod-api"
+description = "REST API and payment engine for Safrod"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+safrod-core = { path = "../safrod-core" }
+safrod-storage = { path = "../safrod-storage" }
+safrod-lightning = { path = "../safrod-lightning" }
+safrod-bitcoin = { path = "../safrod-bitcoin" }
+safrod-webhooks = { path = "../safrod-webhooks" }
+safrod-sandbox = { path = "../safrod-sandbox" }
+axum.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+sha2.workspace = true
+hex.workspace = true
+rand.workspace = true
+subtle.workspace = true
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+sqlx.workspace = true
