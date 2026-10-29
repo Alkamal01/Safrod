@@ -1,0 +1,17 @@
+[package]
+name = "safrod-lightning"
+description = "Lightning node adapter for Safrod built on LDK Node"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+safrod-core = { path = "../safrod-core" }
+ldk-node = "=0.7.1"
+thiserror.workspace = true
+tracing.workspace = true
+hex.workspace = true
+serde.workspace = true
+rand.workspace = true
