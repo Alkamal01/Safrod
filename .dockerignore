@@ -1,0 +1,8 @@
+target
+.git
+.demo
+.env
+references
+data
+node_modules
+task.md

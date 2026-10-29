@@ -1,0 +1,108 @@
+# Local Bitcoin regtest stack: Bitcoin Core, PostgreSQL, two independent Safrod
+# nodes (merchant and payer) and the example merchant app.
+#
+# Development only. Dev endpoints and private webhook destinations are enabled,
+# and every published port binds to 127.0.0.1. Do not expose this stack.
+x-safrod: &safrod
+  build:
+    context: .
+    dockerfile: docker/Dockerfile.safrod
+  depends_on:
+    postgres: { condition: service_healthy }
+    bitcoind: { condition: service_healthy }
+  environment: &safrod-env
+    SAFROD_NETWORK: regtest
+    # Inside the container the API must listen on all interfaces; the port is
+    # only published to localhost below.
+    SAFROD_BIND: 0.0.0.0:8080
+    SAFROD_ALLOW_PUBLIC_BIND: "true"
+    SAFROD_BITCOIN_RPC_URL: http://bitcoind:18443
+    SAFROD_BITCOIN_RPC_USER: safrod
+    SAFROD_BITCOIN_RPC_PASSWORD: ${BITCOIND_RPC_PASSWORD:?copy .env.example to .env}
+    SAFROD_ADMIN_TOKEN: ${SAFROD_ADMIN_TOKEN:?copy .env.example to .env}
+    SAFROD_ENABLE_DEV_ENDPOINTS: "true"
+    SAFROD_WEBHOOK_ALLOW_PRIVATE: "true"
+    SAFROD_LDK_LISTEN: 0.0.0.0:9735
+    SAFROD_LDK_STORAGE_DIR: /home/safrod/data
+    RUST_LOG: info
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: safrod
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?copy .env.example to .env}
+      POSTGRES_DB: safrod
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-payer.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U safrod"]
+      interval: 5s
+      retries: 20
+
+  bitcoind:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.bitcoind
+    command:
+      - -regtest
+      - -printtoconsole
+      - -server=1
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=172.16.0.0/12
+      - -rpcuser=safrod
+      - -rpcpassword=${BITCOIND_RPC_PASSWORD:?copy .env.example to .env}
+      - -fallbackfee=0.0002
+    volumes:
+      - bitcoind-data:/home/bitcoin/.bitcoin
+    healthcheck:
+      test: ["CMD-SHELL", "bitcoin-cli -regtest -rpcuser=safrod -rpcpassword=$$BITCOIND_RPC_PASSWORD getblockchaininfo >/dev/null"]
+      interval: 5s
+      retries: 20
+    environment:
+      BITCOIND_RPC_PASSWORD: ${BITCOIND_RPC_PASSWORD}
+
+  # The merchant's node: the service the example app talks to.
+  safrod:
+    <<: *safrod
+    environment:
+      <<: *safrod-env
+      SAFROD_DATABASE_URL: postgres://safrod:${POSTGRES_PASSWORD}@postgres:5432/safrod
+      SAFROD_LDK_ALIAS: merchant
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - safrod-data:/home/safrod/data
+
+  # A second, independently controlled node used to pay the merchant.
+  payer:
+    <<: *safrod
+    environment:
+      <<: *safrod-env
+      SAFROD_DATABASE_URL: postgres://safrod:${POSTGRES_PASSWORD}@postgres:5432/safrod_payer
+      SAFROD_LDK_ALIAS: payer
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - payer-data:/home/safrod/data
+
+  merchant:
+    image: node:20-slim
+    working_dir: /app
+    command: ["node", "server.js"]
+    environment:
+      HOST: 0.0.0.0
+      PORT: "4000"
+      MERCHANT_CONFIG: /demo/merchant.json
+    volumes:
+      - ./examples/merchant:/app:ro
+      - ./.demo:/demo:ro
+    ports:
+      - "127.0.0.1:4000:4000"
+
+volumes:
+  postgres-data:
+  bitcoind-data:
+  safrod-data:
+  payer-data:

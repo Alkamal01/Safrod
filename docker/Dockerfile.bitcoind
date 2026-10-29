@@ -1,0 +1,19 @@
+# Bitcoin Core release binary, verified against the published SHA-256.
+FROM debian:bookworm-slim AS fetch
+ARG BITCOIN_VERSION=29.2
+ARG BITCOIN_SHA256=1fd58d0ae94b8a9e21bbaeab7d53395a44976e82bd5492b0a894826c135f9009
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL -o /tmp/bitcoin.tgz \
+      "https://bitcoincore.org/bin/bitcoin-core-${BITCOIN_VERSION}/bitcoin-${BITCOIN_VERSION}-x86_64-linux-gnu.tar.gz" \
+    && echo "${BITCOIN_SHA256}  /tmp/bitcoin.tgz" | sha256sum -c - \
+    && tar -xzf /tmp/bitcoin.tgz -C /tmp \
+    && mv "/tmp/bitcoin-${BITCOIN_VERSION}/bin/bitcoind" "/tmp/bitcoin-${BITCOIN_VERSION}/bin/bitcoin-cli" /usr/local/bin/
+
+FROM debian:bookworm-slim
+RUN useradd --system --create-home --uid 10002 bitcoin
+COPY --from=fetch /usr/local/bin/bitcoind /usr/local/bin/bitcoin-cli /usr/local/bin/
+USER bitcoin
+VOLUME /home/bitcoin/.bitcoin
+EXPOSE 18443
+ENTRYPOINT ["bitcoind"]
