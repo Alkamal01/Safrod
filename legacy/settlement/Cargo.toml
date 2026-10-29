@@ -1,8 +1,8 @@
 [package]
-name = "safrod"
+name = "safrod-settlement"
 version = "0.1.0"
 edition = "2024"
-description = "Reference daemon for the Safro cross-border settlement protocol"
+description = "Experimental provider-to-provider settlement prototype (Core Lightning backend), kept from the first Safrod iteration"
 license = "MIT OR Apache-2.0"
 
 [dependencies]

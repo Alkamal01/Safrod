@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use safrod::adapters::simulated::SimulatedFiatAdapter;
-use safrod::api::{self, AppState};
-use safrod::config::NodeConfig;
-use safrod::lightning::cln::ClnLightningSettlement;
-use safrod::node::Node;
-use safrod::store::FileSettlementStore;
+use safrod_settlement::adapters::simulated::SimulatedFiatAdapter;
+use safrod_settlement::api::{self, AppState};
+use safrod_settlement::config::NodeConfig;
+use safrod_settlement::lightning::cln::ClnLightningSettlement;
+use safrod_settlement::node::Node;
+use safrod_settlement::store::FileSettlementStore;
 
 #[tokio::main]
 async fn main() {
@@ -49,7 +49,7 @@ async fn main() {
         .unwrap_or_else(|e| panic!("failed to bind {}: {e}", config.listen_addr));
 
     println!(
-        "safrod listening on {} (currency={:?}, peer={})",
+        "safrod-settlement listening on {} (currency={:?}, peer={})",
         config.listen_addr, config.currency, config.peer_addr
     );
 
