@@ -30,6 +30,10 @@ impl MockBackend {
         self.state.lock().unwrap().fail_next_send = Some(err);
     }
 
+    pub fn forget_payment(&self, payment_hash: &str) {
+        self.state.lock().unwrap().payments.remove(payment_hash);
+    }
+
     pub fn set_payment(&self, payment_hash: &str, payment: NodePayment) {
         self.state
             .lock()
@@ -74,9 +78,19 @@ impl LightningBackend for MockBackend {
         safrod_core::network::Network::Regtest
             .check_invoice_prefix(bolt11)
             .map_err(|e| LightningError::InvalidInvoice(e.to_string()))?;
+        // `lnbcrt<n>n1mock<hash>` carries n * 100 msat; `lnbcrt1mock<hash>` is amountless.
+        let head = bolt11
+            .trim_start_matches("lnbcrt")
+            .split("mock")
+            .next()
+            .unwrap_or("");
+        let amount_msat = head
+            .strip_suffix("n1")
+            .and_then(|digits| digits.parse::<u64>().ok())
+            .map(|n| n * 100);
         Ok(ParsedInvoice {
             payment_hash: hash.to_string(),
-            amount_msat: Some(10_000),
+            amount_msat,
         })
     }
 
