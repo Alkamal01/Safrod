@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Safrod dashboard</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1b1f24; --muted:#5b6570; --line:#d8dde3; --accent:#2b5ea7;
+          --real:#15703a; --real-bg:#e3f4ea; --sim:#8a5a00; --sim-bg:#fdf1d6; --bad:#a3231c; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14171a; --card:#1c2024; --ink:#e6e9ec; --muted:#9aa4af; --line:#2f353b; --accent:#6d9eeb;
+            --real:#6fcf97; --real-bg:#17301f; --sim:#f2c35b; --sim-bg:#3a2e12; --bad:#ff8a80; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,sans-serif; }
+  header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); background:var(--card); }
+  header h1 { font-size:1.05rem; margin:0; }
+  main { max-width:1100px; margin:0 auto; padding:16px; display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
+  section { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px; min-width:0; }
+  section.wide { grid-column:1 / -1; }
+  h2 { font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 8px; }
+  table { width:100%; border-collapse:collapse; font-size:.85rem; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+  .tag { display:inline-block; font-size:.7rem; padding:1px 7px; border-radius:99px; font-weight:600; }
+  .real { color:var(--real); background:var(--real-bg); } .sim { color:var(--sim); background:var(--sim-bg); }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--muted); margin-right:4px; }
+  .dot.ok { background:var(--real); } .dot.bad { background:var(--bad); }
+  input, button { font:inherit; padding:6px 10px; border-radius:6px; border:1px solid var(--line); background:var(--card); color:var(--ink); }
+  input { min-width:260px; } button { background:var(--accent); color:#fff; border-color:var(--accent); cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:2px 12px; font-size:.9rem; } .kv dt { color:var(--muted); } .kv dd { margin:0; text-align:right; }
+  .muted { color:var(--muted); } .err { color:var(--bad); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Safrod</h1>
+  <span id="network" class="tag sim">network ?</span>
+  <span><span id="d-db" class="dot"></span>database <span id="d-ln" class="dot"></span>lightning <span id="d-btc" class="dot"></span>bitcoin core</span>
+  <span style="flex:1"></span>
+  <input id="key" type="password" placeholder="project API key (sfd_test_…)" autocomplete="off">
+  <button id="save">Connect</button>
+</header>
+<main>
+  <section><h2>Node <span class="tag real">real regtest</span></h2><dl class="kv" id="node"></dl></section>
+  <section><h2>Ledger <span class="tag real">real regtest</span></h2><dl class="kv" id="ledger"></dl>
+    <h2 style="margin-top:12px">Sandbox balances <span class="tag sim">simulated, not money</span></h2><dl class="kv" id="sim"></dl></section>
+  <section class="wide"><h2>Channels</h2><table id="channels"></table></section>
+  <section class="wide"><h2>Lightning invoices</h2><table id="invoices"></table></section>
+  <section class="wide"><h2>Lightning payments</h2><table id="payments"></table></section>
+  <section class="wide"><h2>On-chain deposits</h2><table id="deposits"></table></section>
+  <section class="wide"><h2>Events (newest first)</h2><table id="events"></table></section>
+  <section class="wide"><h2>Webhook deliveries</h2><table id="deliveries"></table></section>
+  <section class="wide"><h2>Sandbox actions <span class="tag sim">simulated fiat</span></h2>
+    <p class="muted">Adds synthetic NGN to this project. Run the full scenario with <code>scripts/demo-sandbox.sh</code>.</p>
+    <button class="secondary" id="fund">Add 50,000.00 simulated NGN</button> <span id="fund-out" class="muted"></span></section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let key = '';
+try { key = sessionStorage.getItem('safrod-key') || ''; } catch (_) {}
+$('key').value = key;
+$('save').onclick = () => { key = $('key').value.trim(); try { sessionStorage.setItem('safrod-key', key); } catch (_) {} refresh(); };
+
+const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const short = (s, n = 18) => (s && s.length > n ? s.slice(0, n) + '…' : s ?? '');
+const tag = (sim) => `<span class="tag ${sim ? 'sim' : 'real'}">${sim ? 'simulated' : 'real'}</span>`;
+
+async function get(path) {
+  const res = await fetch(path, { headers: key ? { authorization: 'Bearer ' + key } : {} });
+  if (!res.ok) throw new Error(path + ' → ' + res.status);
+  return res.json();
+}
+function table(id, head, rows) {
+  $(id).innerHTML = '<tr>' + head.map((h) => `<th>${h}</th>`).join('') + '</tr>' +
+    (rows.length ? rows.map((r) => '<tr>' + r.map((c) => `<td>${c}</td>`).join('') + '</tr>').join('')
+                 : `<tr><td colspan="${head.length}" class="muted">none yet</td></tr>`);
+}
+const kv = (id, pairs) => { $(id).innerHTML = pairs.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join(''); };
+const dot = (id, ok) => { $(id).className = 'dot ' + (ok ? 'ok' : 'bad'); };
+
+async function health() {
+  try {
+    const r = await (await fetch('/readyz')).json();
+    $('network').textContent = r.network;
+    $('network').className = 'tag ' + (r.network === 'regtest' ? 'sim' : 'real');
+    dot('d-db', r.checks.database); dot('d-ln', r.checks.lightning_node); dot('d-btc', r.checks.bitcoin_core);
+  } catch (_) { ['d-db', 'd-ln', 'd-btc'].forEach((d) => dot(d, false)); }
+}
+
+async function refresh() {
+  await health();
+  if (!key) return;
+  try {
+    const [node, bal, inv, pay, dep, ev, del, sim] = await Promise.all([
+      get('/v1/node'), get('/v1/balances'), get('/v1/lightning/invoices?limit=10'), get('/v1/lightning/payments?limit=10'),
+      get('/v1/bitcoin/transactions?limit=10'), get('/v1/events?limit=100'), get('/v1/webhook-deliveries?limit=10'), get('/v1/sandbox/balances'),
+    ]);
+    kv('node', [['node id', short(node.info.node_id, 20)], ['block height', node.info.best_block_height],
+      ['bitcoin core height', node.bitcoin_core_height ?? '?'], ['on-chain spendable (sat)', node.balances.onchain_spendable_sat],
+      ['outbound capacity (msat)', node.balances.outbound_capacity_msat], ['inbound capacity (msat)', node.balances.inbound_capacity_msat]]);
+    kv('ledger', [['received (msat)', bal.ledger.lightning_received_msat], ['sent (msat)', bal.ledger.lightning_sent_msat],
+      ['fees (msat)', bal.ledger.lightning_fees_msat], ['in flight (msat)', bal.ledger.lightning_in_flight_msat],
+      ['on-chain confirmed (sat)', bal.ledger.onchain_confirmed_sat], ['on-chain unconfirmed (sat)', bal.ledger.onchain_unconfirmed_sat]]);
+    kv('sim', sim.balances.length ? sim.balances.map((b) => [b.currency + ' (minor units)', b.minor_units]) : [['none', '']]);
+    table('channels', ['peer', 'capacity (sat)', 'outbound (msat)', 'inbound (msat)', 'usable'],
+      node.channels.map((c) => [short(c.peer_node_id, 16), c.capacity_sat, c.outbound_capacity_msat, c.inbound_capacity_msat, c.is_usable ? 'yes' : 'no']));
+    table('invoices', ['id', 'status', 'amount (msat)', 'created', ''], inv.data.map((i) => [short(i.id, 24), esc(i.status), i.amount_msat, short(i.created_at, 19), tag(false)]));
+    table('payments', ['id', 'status', 'amount (msat)', 'fee', 'detail', ''], pay.data.map((p) => [short(p.id, 24), esc(p.status), p.amount_msat, p.fee_msat ?? '', esc(p.failure_reason || ''), tag(false)]));
+    table('deposits', ['txid', 'amount (sat)', 'confirmations', 'status'], dep.data.map((t) => [short(t.txid, 20), t.amount_sat, t.confirmations, esc(t.status)]));
+    table('events', ['seq', 'type', 'resource', 'time', ''], ev.data.slice().reverse().slice(0, 30).map((e) => [e.seq, esc(e.type), short(e.resource_id, 24), short(e.created_at, 19), tag(e.simulated)]));
+    table('deliveries', ['id', 'status', 'attempts', 'last status', 'last error'], del.data.map((d) => [short(d.id, 24), esc(d.status), d.attempts, d.last_status ?? '', esc(d.last_error || '')]));
+  } catch (e) { $('node').innerHTML = `<dd class="err">${esc(e.message)}</dd>`; }
+}
+
+$('fund').onclick = async () => {
+  const res = await fetch('/v1/sandbox/balances', { method: 'POST', headers: { authorization: 'Bearer ' + key }, body: JSON.stringify({ currency: 'NGN', minor_units: 5000000 }) });
+  $('fund-out').textContent = res.ok ? 'added' : 'failed: ' + res.status; refresh();
+};
+refresh(); setInterval(refresh, 3000);
+</script>
+</body>
+</html>

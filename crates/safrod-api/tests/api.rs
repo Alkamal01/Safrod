@@ -734,3 +734,26 @@ async fn openapi_document_matches_the_router(pool: PgPool) {
         }
     }
 }
+
+#[sqlx::test(migrations = "../safrod-storage/migrations")]
+async fn dashboard_is_served_with_a_restrictive_csp(pool: PgPool) {
+    let h = harness(pool).await;
+    let response = h
+        .app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/dashboard")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let csp = response.headers()["content-security-policy"]
+        .to_str()
+        .unwrap();
+    assert!(csp.contains("default-src 'none'") && csp.contains("connect-src 'self'"));
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    assert!(String::from_utf8_lossy(&body).contains("Safrod"));
+}
