@@ -1,1 +1,5 @@
 /target
+/references/
+.env
+/data/
+*.log
