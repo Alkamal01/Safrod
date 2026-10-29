@@ -2228,6 +2228,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "safrod-sandbox"
+version = "0.1.0"
+dependencies = [
+ "safrod-core",
+ "serde",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "safrod-settlement"
 version = "0.1.0"
 dependencies = [

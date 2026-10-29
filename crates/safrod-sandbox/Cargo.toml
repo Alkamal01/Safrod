@@ -1,0 +1,13 @@
+[package]
+name = "safrod-sandbox"
+description = "Deterministic simulated quotes and fiat payouts for Safrod developer demos"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+safrod-core = { path = "../safrod-core" }
+serde.workspace = true
+thiserror.workspace = true
