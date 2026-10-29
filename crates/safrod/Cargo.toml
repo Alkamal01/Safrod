@@ -1,0 +1,26 @@
+[package]
+name = "safrod"
+description = "Safrod daemon: self-hostable Bitcoin and Lightning payment infrastructure"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "safrod"
+path = "src/main.rs"
+
+[dependencies]
+safrod-core = { path = "../safrod-core" }
+safrod-storage = { path = "../safrod-storage" }
+safrod-lightning = { path = "../safrod-lightning" }
+safrod-bitcoin = { path = "../safrod-bitcoin" }
+safrod-webhooks = { path = "../safrod-webhooks" }
+safrod-api = { path = "../safrod-api" }
+axum.workspace = true
+tokio.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+reqwest.workspace = true
