@@ -168,12 +168,12 @@ async fn create_payout(
     if let Some(invoice) = &req.settlement_invoice {
         let target = invoice.clone();
         let parsed = blocking(&state.ln, move |ln| ln.parse_invoice(&target)).await??;
-        if let Some(amount) = parsed.amount_msat
-            && amount as i64 != quote_record.btc_amount_msat
-        {
-            return Err(ApiError::validation(
-                "settlement invoice amount does not match the quote's BTC amount",
-            ));
+        if let Some(amount) = parsed.amount_msat {
+            if amount as i64 != quote_record.btc_amount_msat {
+                return Err(ApiError::validation(
+                    "settlement invoice amount does not match the quote's BTC amount",
+                ));
+            }
         }
     }
 

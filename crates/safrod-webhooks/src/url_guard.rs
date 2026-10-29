@@ -38,11 +38,12 @@ pub fn validate_url(raw: &str, allow_private: bool) -> Result<Url, GuardError> {
     if !allow_private && host.eq_ignore_ascii_case("localhost") {
         return Err(GuardError::NotPublic);
     }
-    if let Ok(ip) = host.trim_matches(['[', ']']).parse::<IpAddr>()
-        && !allow_private
-        && !is_public_ip(ip)
-    {
-        return Err(GuardError::NotPublic);
+    if !allow_private {
+        if let Ok(ip) = host.trim_matches(['[', ']']).parse::<IpAddr>() {
+            if !is_public_ip(ip) {
+                return Err(GuardError::NotPublic);
+            }
+        }
     }
     Ok(url)
 }

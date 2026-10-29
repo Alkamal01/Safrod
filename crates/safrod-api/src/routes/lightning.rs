@@ -108,16 +108,18 @@ async fn create_invoice(
     let metadata = metadata(req.metadata)?;
     let idem = json::idempotency_key(&headers, false)?;
 
-    if let Some(key) = &idem
-        && let Some(existing) = state
+    if let Some(key) = &idem {
+        if let Some(existing) = state
             .db
             .find_invoice_by_idempotency_key(&auth.project_id, key)
             .await?
-    {
-        if existing.amount_msat as u64 != amount_msat || existing.description != req.description {
-            return Err(StorageError::IdempotencyMismatch.into());
+        {
+            if existing.amount_msat as u64 != amount_msat || existing.description != req.description
+            {
+                return Err(StorageError::IdempotencyMismatch.into());
+            }
+            return Ok(json::created(false, json::invoice(&existing)));
         }
-        return Ok(json::created(false, json::invoice(&existing)));
     }
 
     let node_request = NodeInvoice {

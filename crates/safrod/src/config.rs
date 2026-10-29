@@ -98,13 +98,13 @@ impl Config {
             get("SAFROD_DATABASE_URL").ok_or(ConfigError::Missing("SAFROD_DATABASE_URL"))?;
 
         let admin_token = get("SAFROD_ADMIN_TOKEN").filter(|t| !t.is_empty());
-        if let Some(token) = &admin_token
-            && token.len() < 24
-        {
-            return Err(ConfigError::Invalid {
-                name: "SAFROD_ADMIN_TOKEN",
-                reason: "must be at least 24 characters".into(),
-            });
+        if let Some(token) = &admin_token {
+            if token.len() < 24 {
+                return Err(ConfigError::Invalid {
+                    name: "SAFROD_ADMIN_TOKEN",
+                    reason: "must be at least 24 characters".into(),
+                });
+            }
         }
         let enable_dev_endpoints = flag(get, "SAFROD_ENABLE_DEV_ENDPOINTS")?;
         if enable_dev_endpoints && network != Network::Regtest {
