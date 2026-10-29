@@ -85,6 +85,14 @@ mod tests {
     }
 
     #[test]
+    fn matches_the_fixed_vector_checked_by_the_example_merchant_app() {
+        assert_eq!(
+            sign(SECRET, 1_000, b"{\"a\":1}"),
+            "t=1000,v1=1007d8ff5e2ecbd6b41db303d180ae70972ed8eb08209f2c93826a8b72775200"
+        );
+    }
+
+    #[test]
     fn tampered_body_or_secret_is_rejected() {
         let header = sign(SECRET, 1_000, b"{\"a\":1}");
         assert_eq!(
