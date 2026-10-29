@@ -93,7 +93,9 @@ fn node_err(err: NodeError) -> LightningError {
     match err {
         NodeError::NotRunning => LightningError::NotRunning,
         NodeError::DuplicatePayment => LightningError::DuplicatePayment,
-        NodeError::InsufficientFunds => LightningError::NoRoute,
+        // LDK reports route-not-found and insufficient balance both as a failed
+        // send before any HTLC is dispatched.
+        NodeError::InsufficientFunds | NodeError::PaymentSendingFailed => LightningError::NoRoute,
         other => LightningError::Node(other.to_string()),
     }
 }
