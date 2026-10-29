@@ -133,6 +133,18 @@ impl LightningBackend for MockBackend {
         Ok(format!("bcrt1qmock{:034}", state.counter))
     }
 
+    fn open_channel(
+        &self,
+        _peer_node_id: &str,
+        _peer_address: &str,
+        _capacity_sat: u64,
+        _push_msat: Option<u64>,
+    ) -> Result<String, LightningError> {
+        Err(LightningError::Node(
+            "the mock backend cannot open channels".into(),
+        ))
+    }
+
     fn channels(&self) -> Vec<ChannelInfo> {
         Vec::new()
     }

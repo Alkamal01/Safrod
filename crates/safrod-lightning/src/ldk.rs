@@ -3,6 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use ldk_node::bitcoin::Network as BtcNetwork;
+use ldk_node::bitcoin::secp256k1::PublicKey;
 use ldk_node::lightning::ln::channelmanager::PaymentId;
 use ldk_node::lightning::ln::msgs::SocketAddress;
 use ldk_node::lightning_invoice::{Bolt11Invoice, Bolt11InvoiceDescription, Description};
@@ -230,6 +231,23 @@ impl LightningBackend for LdkBackend {
             .onchain_payment()
             .new_address()
             .map(|a| a.to_string())
+            .map_err(node_err)
+    }
+
+    fn open_channel(
+        &self,
+        peer_node_id: &str,
+        peer_address: &str,
+        capacity_sat: u64,
+        push_msat: Option<u64>,
+    ) -> Result<String, LightningError> {
+        let node_id = PublicKey::from_str(peer_node_id)
+            .map_err(|_| LightningError::Node("invalid peer node id".into()))?;
+        let address = SocketAddress::from_str(peer_address)
+            .map_err(|_| LightningError::Node("invalid peer address".into()))?;
+        self.node
+            .open_channel(node_id, address, capacity_sat, push_msat, None)
+            .map(|id| format!("{id:?}"))
             .map_err(node_err)
     }
 

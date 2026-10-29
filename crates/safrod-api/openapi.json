@@ -1607,6 +1607,71 @@
         }
       }
     },
+    "/v1/admin/channels": {
+      "post": {
+        "summary": "Open a channel to a peer (operator)",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "adminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "peer_node_id": {
+                    "type": "string"
+                  },
+                  "peer_address": {
+                    "type": "string"
+                  },
+                  "capacity_sat": {
+                    "type": "integer",
+                    "description": "20000 to 16777215."
+                  },
+                  "push_msat": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "peer_node_id",
+                  "peer_address",
+                  "capacity_sat"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Funding broadcast",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
     "/v1/dev/mine": {
       "post": {
         "summary": "Mine regtest blocks to the node wallet (operator, regtest only, off by default)",

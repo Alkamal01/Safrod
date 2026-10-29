@@ -94,7 +94,8 @@ impl Config {
                 "SAFROD_BIND is not a loopback address; set SAFROD_ALLOW_PUBLIC_BIND=true only behind a firewall or a published-to-localhost container port",
             ));
         }
-        let database_url = get("SAFROD_DATABASE_URL").ok_or(ConfigError::Missing("SAFROD_DATABASE_URL"))?;
+        let database_url =
+            get("SAFROD_DATABASE_URL").ok_or(ConfigError::Missing("SAFROD_DATABASE_URL"))?;
 
         let admin_token = get("SAFROD_ADMIN_TOKEN").filter(|t| !t.is_empty());
         if let Some(token) = &admin_token
@@ -107,7 +108,9 @@ impl Config {
         }
         let enable_dev_endpoints = flag(get, "SAFROD_ENABLE_DEV_ENDPOINTS")?;
         if enable_dev_endpoints && network != Network::Regtest {
-            return Err(ConfigError::Unsafe("dev endpoints are only allowed on regtest"));
+            return Err(ConfigError::Unsafe(
+                "dev endpoints are only allowed on regtest",
+            ));
         }
 
         let lightning = match get("SAFROD_LIGHTNING_BACKEND").as_deref() {
@@ -152,7 +155,9 @@ impl Config {
             return Err(ConfigError::Missing("SAFROD_BITCOIN_RPC_URL"));
         }
         if config.lightning == LightningKind::Mock && network != Network::Regtest {
-            return Err(ConfigError::Unsafe("the mock Lightning backend is regtest-only"));
+            return Err(ConfigError::Unsafe(
+                "the mock Lightning backend is regtest-only",
+            ));
         }
         Ok(config)
     }
@@ -222,19 +227,43 @@ mod tests {
             load(&with(&[("SAFROD_BIND", "0.0.0.0:8080")])),
             Err(ConfigError::Unsafe(_))
         ));
-        assert!(load(&with(&[("SAFROD_BIND", "0.0.0.0:8080"), ("SAFROD_ALLOW_PUBLIC_BIND", "true")])).is_ok());
+        assert!(
+            load(&with(&[
+                ("SAFROD_BIND", "0.0.0.0:8080"),
+                ("SAFROD_ALLOW_PUBLIC_BIND", "true")
+            ]))
+            .is_ok()
+        );
     }
 
     #[test]
     fn short_admin_token_is_rejected() {
         assert!(load(&with(&[("SAFROD_ADMIN_TOKEN", "short")])).is_err());
-        assert!(load(&with(&[("SAFROD_ADMIN_TOKEN", "0123456789012345678901234")])).is_ok());
+        assert!(
+            load(&with(&[(
+                "SAFROD_ADMIN_TOKEN",
+                "0123456789012345678901234"
+            )]))
+            .is_ok()
+        );
     }
 
     #[test]
     fn dev_endpoints_and_mock_are_regtest_only() {
-        assert!(load(&with(&[("SAFROD_NETWORK", "signet"), ("SAFROD_ENABLE_DEV_ENDPOINTS", "true")])).is_err());
-        assert!(load(&with(&[("SAFROD_NETWORK", "signet"), ("SAFROD_LIGHTNING_BACKEND", "mock")])).is_err());
+        assert!(
+            load(&with(&[
+                ("SAFROD_NETWORK", "signet"),
+                ("SAFROD_ENABLE_DEV_ENDPOINTS", "true")
+            ]))
+            .is_err()
+        );
+        assert!(
+            load(&with(&[
+                ("SAFROD_NETWORK", "signet"),
+                ("SAFROD_LIGHTNING_BACKEND", "mock")
+            ]))
+            .is_err()
+        );
     }
 
     #[test]
@@ -249,6 +278,9 @@ mod tests {
 
     #[test]
     fn database_url_is_required() {
-        assert!(matches!(load(&[]), Err(ConfigError::Missing("SAFROD_DATABASE_URL"))));
+        assert!(matches!(
+            load(&[]),
+            Err(ConfigError::Missing("SAFROD_DATABASE_URL"))
+        ));
     }
 }

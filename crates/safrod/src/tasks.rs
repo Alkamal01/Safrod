@@ -11,7 +11,11 @@ use tracing::{error, warn};
 /// Applies node events one at a time and acknowledges each only after it is
 /// durably recorded. An unacknowledged event is redelivered by the node, which
 /// is safe because every handler is idempotent.
-pub async fn pump_node_events(ldk: Arc<LdkBackend>, state: AppState, mut stop: watch::Receiver<bool>) {
+pub async fn pump_node_events(
+    ldk: Arc<LdkBackend>,
+    state: AppState,
+    mut stop: watch::Receiver<bool>,
+) {
     loop {
         let event = tokio::select! {
             event = ldk.next_event() => event,
@@ -60,7 +64,9 @@ pub async fn shutdown_signal() {
     };
     #[cfg(unix)]
     let terminate = async {
-        if let Ok(mut sig) = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+        if let Ok(mut sig) =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        {
             sig.recv().await;
         }
     };

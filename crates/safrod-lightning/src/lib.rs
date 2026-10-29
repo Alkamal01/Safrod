@@ -144,6 +144,17 @@ pub trait LightningBackend: Send + Sync {
     fn payment(&self, payment_hash: &str) -> Option<NodePayment>;
 
     fn new_onchain_address(&self) -> Result<String, LightningError>;
+
+    /// Connects to the peer and opens a channel funded from the node wallet.
+    /// Returns once the funding transaction is broadcast; the channel becomes
+    /// usable after it confirms.
+    fn open_channel(
+        &self,
+        peer_node_id: &str,
+        peer_address: &str,
+        capacity_sat: u64,
+        push_msat: Option<u64>,
+    ) -> Result<String, LightningError>;
     fn channels(&self) -> Vec<ChannelInfo>;
     fn balances(&self) -> NodeBalances;
 }

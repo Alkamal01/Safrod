@@ -25,6 +25,7 @@ pub fn routes() -> Router<AppState> {
             "/v1/projects/:project_id/api-keys/:key_id",
             delete(revoke_key),
         )
+        .route("/v1/admin/channels", post(open_channel))
         .route("/v1/dev/mine", post(mine))
         .route("/v1/dev/status", get(dev_status))
 }
@@ -208,4 +209,50 @@ async fn dev_status(
     Ok(json::ok(
         json!({ "network": state.config.network.as_str(), "block_height": height }),
     ))
+}
+
+#[derive(Deserialize)]
+struct OpenChannel {
+    peer_node_id: String,
+    peer_address: String,
+    capacity_sat: u64,
+    push_msat: Option<u64>,
+}
+
+/// Node operation rather than a project resource, so it sits behind the
+/// operator token. The channel is usable once its funding transaction confirms.
+async fn open_channel(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Result<Response, ApiError> {
+    require_admin(&state, &headers)?;
+    let req: OpenChannel = json::parse(&body)?;
+    if req.capacity_sat < 20_000 || req.capacity_sat > 16_777_215 {
+        return Err(ApiError::validation(
+            "capacity_sat must be between 20000 and 16777215",
+        ));
+    }
+    if req
+        .push_msat
+        .is_some_and(|p| p >= req.capacity_sat.saturating_mul(1000))
+    {
+        return Err(ApiError::validation(
+            "push_msat must be below the channel capacity",
+        ));
+    }
+    let channel_id = blocking(&state.ln, move |ln| {
+        ln.open_channel(
+            &req.peer_node_id,
+            &req.peer_address,
+            req.capacity_sat,
+            req.push_msat,
+        )
+    })
+    .await??;
+    Ok((
+        StatusCode::ACCEPTED,
+        axum::Json(json!({ "user_channel_id": channel_id, "status": "funding_broadcast" })),
+    )
+        .into_response())
 }

@@ -19,7 +19,9 @@ use crate::config::{Config, LightningKind};
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
         .init();
     if let Err(e) = run().await {
         error!("{e}");
@@ -38,7 +40,11 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     db.migrate().await?;
 
     let rpc = match &config.bitcoin_rpc_url {
-        Some(url) => Some(BitcoinRpc::new(url, &config.bitcoin_rpc_user, &config.bitcoin_rpc_password)?),
+        Some(url) => Some(BitcoinRpc::new(
+            url,
+            &config.bitcoin_rpc_user,
+            &config.bitcoin_rpc_password,
+        )?),
         None => None,
     };
 
@@ -60,7 +66,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 rpc_user: config.bitcoin_rpc_user.clone(),
                 rpc_password: config.bitcoin_rpc_password.clone(),
             };
-            let backend = tokio::task::spawn_blocking(move || LdkBackend::start(ldk_config)).await??;
+            let backend =
+                tokio::task::spawn_blocking(move || LdkBackend::start(ldk_config)).await??;
             info!(node_id = %backend.info().node_id, "lightning node started");
             (backend.clone() as Arc<dyn LightningBackend>, Some(backend))
         }
@@ -89,9 +96,16 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let (stop_tx, stop_rx) = watch::channel(false);
     let mut handles = Vec::new();
     if let Some(ldk) = ldk.clone() {
-        handles.push(tokio::spawn(tasks::pump_node_events(ldk, state.clone(), stop_rx.clone())));
+        handles.push(tokio::spawn(tasks::pump_node_events(
+            ldk,
+            state.clone(),
+            stop_rx.clone(),
+        )));
     }
-    handles.push(tokio::spawn(tasks::expire_invoices(db.clone(), stop_rx.clone())));
+    handles.push(tokio::spawn(tasks::expire_invoices(
+        db.clone(),
+        stop_rx.clone(),
+    )));
     handles.push(tokio::spawn(
         Worker::new(
             db.clone(),
