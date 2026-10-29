@@ -52,18 +52,25 @@ Everything under `/v1/lightning` and `/v1/bitcoin` is backed by real regtest Lig
 
 ## Feature matrix
 
+Status is one of **working** (run end to end, see `docs/progress.md`), **simulated** (deterministic, no funds), **experimental** (exists, little verified), **planned**.
+
 | Capability | Status |
 | --- | --- |
-| Regtest Bitcoin Core + two LDK Node nodes in Docker Compose | planned until verified; see `docs/progress.md` |
-| Lightning invoice create/read, `paid` via node events | planned until verified |
-| Lightning payment send with idempotency, pending/unknown handling | planned until verified |
-| On-chain address, deposit and confirmation tracking | planned until verified |
-| API keys with scopes, hashed storage | planned until verified |
-| Signed webhooks with outbox and retries | planned until verified |
-| Simulated quotes and payouts (success, failure, timeout) | planned until verified |
-| OpenAPI document and Swagger UI | planned until verified |
-| Dashboard | planned |
-| Core Lightning settlement prototype (`legacy/settlement`) | working, experimental, unit-tested only |
-| Live fiat rails, FX execution, KYC, mainnet | not implemented, not claimed |
-
-This table is updated as each row is exercised end to end; `docs/progress.md` records what was actually run.
+| Bitcoin Core regtest with two independent LDK Node nodes and a real channel | working (native runner) |
+| Lightning invoice create/read; `paid` from node events | working |
+| Lightning payment send with idempotency, `pending`/`unknown`/`failed` handling | working |
+| Restart recovery for incoming payments after `kill -9` | working |
+| Reconciliation of in-flight outgoing payments after a crash | experimental (mock and database tested; not reproduced on a real in-flight HTLC) |
+| On-chain address, deposit detection and confirmation tracking | working (regtest) |
+| API keys with scopes, hashed storage; operator token | working |
+| Signed webhooks with transactional outbox, retries, replay, SSRF guard | working |
+| OpenAPI document and Swagger UI | working (UI loads assets from a CDN) |
+| Operator dashboard | working, minimal |
+| Sandbox quotes and payouts (success, failure, timeout) | simulated; BTC leg real on regtest |
+| Docker Compose stack | experimental (written, not run) |
+| CI workflow | experimental (written, not run on GitHub) |
+| Core Lightning settlement prototype (`legacy/settlement`) | experimental, unit-tested only |
+| Per-project spending limits, rate limiting, TLS, encrypted webhook secrets | planned |
+| Reorg handling for deposits | planned |
+| Typed SDK, `grid-compat` adapter, Spark and UMA experiments | planned |
+| Live fiat rails, FX execution, KYC, stable-value payments, mainnet | not implemented, not claimed |
