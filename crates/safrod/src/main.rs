@@ -55,7 +55,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         LightningKind::Ldk => {
             let (rpc_host, rpc_port) = config.rpc_host_port()?;
-            std::fs::create_dir_all(&config.ldk_storage_dir)?;
+            create_private_dir(&config.ldk_storage_dir)?;
             let ldk_config = LdkConfig {
                 network: config.network,
                 storage_dir: config.ldk_storage_dir.clone(),
@@ -137,4 +137,21 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         let _ = tokio::task::spawn_blocking(move || ldk.stop()).await;
     }
     Ok(())
+}
+
+/// The LDK data directory holds the node's wallet seed, so it is created
+/// readable by the owner only.
+fn create_private_dir(path: &std::path::Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(path)
+    }
+    #[cfg(not(unix))]
+    {
+        std::fs::create_dir_all(path)
+    }
 }

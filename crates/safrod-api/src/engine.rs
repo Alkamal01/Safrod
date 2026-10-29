@@ -115,6 +115,7 @@ pub async fn send_payment(
             created: true,
         }),
         Err(err) => {
+            warn!(payment = %begun.payment.id, error = %err, "node refused to send");
             // The node refused before an HTLC left, so the failure is definite.
             let failed = state
                 .db
