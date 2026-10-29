@@ -7,6 +7,7 @@ use ldk_node::bitcoin::secp256k1::PublicKey;
 use ldk_node::lightning::ln::channelmanager::PaymentId;
 use ldk_node::lightning::ln::msgs::SocketAddress;
 use ldk_node::lightning_invoice::{Bolt11Invoice, Bolt11InvoiceDescription, Description};
+use ldk_node::logger::LogLevel;
 use ldk_node::payment::{PaymentDirection, PaymentKind, PaymentStatus};
 use ldk_node::{Builder, Event, Node, NodeError};
 use safrod_core::network::Network;
@@ -46,6 +47,8 @@ impl LdkBackend {
 
         let mut builder = Builder::new();
         builder.set_network(btc_network);
+        // LDK logs payment preimages at debug level; keep them out of the log file.
+        builder.set_filesystem_logger(None, Some(LogLevel::Info));
         builder.set_storage_dir_path(config.storage_dir.to_string_lossy().into_owned());
         builder.set_chain_source_bitcoind_rpc(
             config.rpc_host,
