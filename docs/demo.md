@@ -27,7 +27,7 @@ scripts/demo.sh all
 scripts/dev-native.sh reset      # clean slate
 ```
 
-Open `http://127.0.0.1:8080/dashboard` and paste the merchant key from `.demo/keys.env` (`KA`) to watch invoices, payments, channels, events and webhook deliveries. Open `http://127.0.0.1:4000` for the merchant app and `http://127.0.0.1:8080/docs` for the API reference. `.demo/` holds generated keys and is git-ignored.
+Open `http://127.0.0.1:8080/dashboard` and paste the merchant key from `.demo/keys.env` (`KA`) to watch invoices, payments, channels, events and webhook deliveries. Open `http://127.0.0.1:8080/flow-builder` to reach the adapted Next.js flow builder (served on port 3001). Choose a supported source and destination to view Safrod API calls. The builder generates cURL examples but does not execute payments; set `SAFROD_API_KEY` from `.demo/keys.env` before running them. Lightning and on-chain flows use regtest. NGN/KES examples are sandbox simulations. For the native stack, start the UI separately with `make flow-ui`. Open `http://127.0.0.1:4000` for the merchant app and `http://127.0.0.1:8080/docs` for the API reference. `.demo/` holds generated keys and is git-ignored.
 
 ## Demo 1: real Lightning (`scripts/demo-lightning.sh`)
 

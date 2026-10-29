@@ -1,6 +1,6 @@
 use axum::Router;
 use axum::http::header;
-use axum::response::{Html, IntoResponse};
+use axum::response::{Html, IntoResponse, Redirect};
 use axum::routing::get;
 
 use crate::AppState;
@@ -12,6 +12,7 @@ pub fn routes() -> Router<AppState> {
         .route("/openapi.json", get(openapi))
         .route("/docs", get(swagger))
         .route("/dashboard", get(dashboard))
+        .route("/flow-builder", get(flow_builder))
 }
 
 async fn openapi() -> impl IntoResponse {
@@ -49,4 +50,8 @@ async fn dashboard() -> impl IntoResponse {
         ],
         DASHBOARD,
     )
+}
+
+async fn flow_builder() -> Redirect {
+    Redirect::temporary("http://127.0.0.1:3001/")
 }

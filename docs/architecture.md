@@ -66,6 +66,7 @@ Status is one of **working** (run end to end, see `docs/progress.md`), **simulat
 | Signed webhooks with transactional outbox, retries, replay, SSRF guard | working |
 | OpenAPI document and Swagger UI | working (UI loads assets from a CDN) |
 | Operator dashboard | working, minimal |
+| Visual test flow builder | adapted Next.js app, browser behavior not verified; generates Safrod API recipes |
 | Sandbox quotes and payouts (success, failure, timeout) | simulated; BTC leg real on regtest |
 | Docker Compose stack | experimental (written, not run) |
 | CI workflow | experimental (written, not run on GitHub) |

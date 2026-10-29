@@ -1,0 +1,67 @@
+@use '@lightsparkdev/origin/tokens/text-styles' as *;
+
+.toggle {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4xs);
+  padding: var(--spacing-3xs);
+  background: var(--surface-secondary);
+  border: var(--stroke-xs) solid var(--border-tertiary);
+  border-radius: var(--corner-radius-md);
+
+  :global([data-theme='dark']) & { background: var(--surface-primary); }
+  &:hover { border-color: var(--border-secondary); }
+}
+
+.toggleItem {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--corner-radius-sm);
+  color: var(--icon-secondary);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+
+  &:hover { color: var(--icon-primary); }
+  svg path { vector-effect: non-scaling-stroke; }
+}
+
+.toggleItemActive {
+  background: var(--surface-elevated);
+  border-radius: var(--corner-radius-xs);
+  color: var(--icon-primary);
+}
+
+.trailing {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.link {
+  @include label;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 0 var(--spacing-4xs);
+  font-feature-settings: 'salt' 1;
+  transition: color 150ms ease;
+  &:hover { color: var(--text-primary); }
+}
+
+.iconLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 var(--spacing-3xs);
+  border-radius: var(--corner-radius-sm);
+  color: var(--icon-secondary);
+  transition: color 150ms ease;
+  &:hover { color: var(--icon-primary); }
+}

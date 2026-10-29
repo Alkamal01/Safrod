@@ -1,6 +1,6 @@
 # Progress
 
-Last updated 2026-10-29. This file separates what was run from what was only written.
+Last updated 2026-10-30. This file separates what was run from what was only written.
 
 ## Completed and tested
 
@@ -24,6 +24,7 @@ Last updated 2026-10-29. This file separates what was run from what was only wri
 
 ## Implemented but unverified
 
+- **Visual flow builder.** The Next.js/React/Sass UI in `dashboard/flow-builder-ui` adapts Lightspark's public flow-builder source and components, with Safrod selectors, regtest/simulation diagram labels, and Safrod API cURL examples. Its Next.js 16 production build and TypeScript checks pass; npm reports no advisories. Docker Compose serves it on port 3001; `/flow-builder` redirects there. The UI does not execute payments. Browser rendering is not checked. A container build attempt stalled at its in-container `npm ci` dependency fetch.
 - **Docker Compose stack and Dockerfiles.** `docker compose config` validates, but the images could not be pulled in the environment where this was built, so `make up` has not been run. The native runner exercises the same services and scripts.
 - **CI.** The workflow is written. It has not run on GitHub. Its regtest job runs the same commands verified locally. `cargo deny` has not been run locally (not installed); the license allow-list was derived from `cargo metadata`.
 - **Real in-flight crash recovery.** Reconciliation after a restart is tested with the mock backend and PostgreSQL, and a real node restart is tested for incoming payments. A real crash while an outgoing HTLC is in flight was not reproduced.

@@ -35,6 +35,7 @@ It is for wallet and merchant developers who want a self-hostable payment backen
 | On-chain deposit address and confirmation tracking via Bitcoin Core | working |
 | Signed webhooks (outbox, retry, replay, SSRF guard) | working |
 | Scoped API keys, operator token, OpenAPI, dashboard | working |
+| Visual API flow builder for test scenarios | implemented; browser review pending |
 | Simulated quotes and payouts (success, failure, timeout) with a real regtest BTC leg | simulated |
 | Docker Compose stack, GitHub Actions run | written, not yet run |
 
@@ -115,8 +116,10 @@ GET  /v1/lightning/invoices/{id}     GET  /v1/lightning/payments/{id}
 POST /v1/bitcoin/addresses           GET  /v1/bitcoin/transactions/{id}
 GET  /v1/balances   GET /v1/events   POST /v1/webhook-endpoints
 POST /v1/sandbox/quotes              POST /v1/sandbox/payouts    # simulated
-GET  /healthz       GET /readyz      GET  /dashboard
+GET  /healthz       GET /readyz      GET  /dashboard       GET /flow-builder
 ```
+
+`/flow-builder` opens the adapted Safrod Next.js flow builder. Its split-pane layout, animated diagram, selectors and code panel are based on Lightspark's public builder; Safrod replaces its branding, options and API recipes. It generates cURL examples but does not execute payments. See the [upstream notice](dashboard/flow-builder-ui/UPSTREAM-NOTICE.md) for attribution and the pinned source revision. `make up` starts the UI at `http://127.0.0.1:3001`; for a native Safrod stack, run `make flow-ui` in a second terminal.
 
 The API is original. It borrows general conventions from public API design (typed statuses, request identifiers, signed webhooks) and makes no compatibility claim with any third-party API.
 

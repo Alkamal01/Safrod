@@ -16,6 +16,7 @@ use safrod_lightning::{LightningError, NodeEvent, NodePayment, NodePaymentStatus
 use safrod_storage::Db;
 use serde_json::{Value, json};
 use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 use tower::ServiceExt;
 
 struct Harness {
@@ -756,4 +757,37 @@ async fn dashboard_is_served_with_a_restrictive_csp(pool: PgPool) {
     assert!(csp.contains("default-src 'none'") && csp.contains("connect-src 'self'"));
     let body = response.into_body().collect().await.unwrap().to_bytes();
     assert!(String::from_utf8_lossy(&body).contains("Safrod"));
+}
+
+#[tokio::test]
+async fn flow_builder_redirects_to_the_local_next_app() {
+    let pool = PgPoolOptions::new()
+        .connect_lazy("postgres://safrod:test@127.0.0.1/safrod_test")
+        .unwrap();
+    let app = router(AppState {
+        db: Db::from_pool(pool),
+        ln: Arc::new(MockBackend::new()),
+        rpc: None,
+        config: Arc::new(ApiConfig {
+            network: Network::Regtest,
+            admin_token: None,
+            webhook_allow_private: false,
+            default_confirmations: 3,
+            enable_dev_endpoints: false,
+        }),
+    });
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/flow-builder")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
+    assert_eq!(
+        response.headers()["location"].to_str().unwrap(),
+        "http://127.0.0.1:3001/"
+    );
 }

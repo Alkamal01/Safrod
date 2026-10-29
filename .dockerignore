@@ -5,4 +5,7 @@ target
 references
 data
 node_modules
+**/node_modules
+**/.next
+dashboard/flow-builder-ui/.next
 task.md

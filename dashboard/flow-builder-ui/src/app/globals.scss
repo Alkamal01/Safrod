@@ -1,0 +1,64 @@
+@use '@lightsparkdev/origin/tokens/variables';
+@use '@lightsparkdev/origin/tokens/typography';
+@use '@lightsparkdev/origin/tokens/effects';
+@use '@lightsparkdev/origin/tokens/reset';
+
+:root {
+  --font-family-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --action-bg: rgba(17, 169, 103, 0.08);
+  --action-text: #118453;
+  --surface-hover: var(--color-alpha-black-04);
+}
+[data-theme='dark'] {
+  --action-bg: rgba(17, 169, 103, 0.15);
+  --action-text: #11a967;
+  --surface-hover: var(--color-alpha-white-06);
+}
+
+* {
+  corner-shape: squircle;
+}
+
+@supports (corner-shape: squircle) {
+  :root {
+    --corner-radius-2xs: 3.6px;   /* 2 × 1.8 */
+    --corner-radius-xs: 7.2px;    /* 4 × 1.8 */
+    --corner-radius-sm: 10.8px;   /* 6 × 1.8 */
+    --corner-radius-md: 14.4px;   /* 8 × 1.8 */
+    --corner-radius-lg: 21.6px;   /* 12 × 1.8 */
+    --corner-radius-xl: 28.8px;   /* 16 × 1.8 */
+    --corner-radius-2xl: 43.2px;  /* 24 × 1.8 */
+    --corner-radius-3xl: 57.6px;  /* 32 × 1.8 */
+    --corner-radius-4xl: 72px;    /* 40 × 1.8 */
+  }
+}
+
+body {
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-sans);
+  font-weight: var(--font-weight-book);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// View transition: smooth cross-fade between mobile wizard/results views
+::view-transition-old(root) {
+  animation-duration: 150ms;
+}
+
+::view-transition-new(root) {
+  animation-duration: 150ms;
+}
+
+// Mobile: match body bg to the active view so iOS status bar picks up the right color
+@media (max-width: 767px) {
+  body {
+    background: var(--surface-secondary);
+
+    [data-theme='dark'] & {
+      background: var(--color-gray-975);
+    }
+  }
+}

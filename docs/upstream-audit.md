@@ -1,6 +1,6 @@
 # Upstream audit
 
-Reference repositories are cloned into `references/` (ignored by Git) for reading only. Safrod consumes upstream code as published crate dependencies and never copies or patches it. Commits below are the exact checkouts inspected on 2026-10-29.
+Reference repositories are cloned into `references/` (ignored by Git) for research. Safrod consumes upstream code as published crate dependencies except for the isolated, attributed flow-builder adaptation recorded below. Commits in the table are the exact checkouts inspected on 2026-10-29.
 
 | Repository | Commit | License (from checked-out files) | How Safrod uses it |
 | --- | --- | --- | --- |
@@ -9,7 +9,7 @@ Reference repositories are cloned into `references/` (ignored by Git) for readin
 | [bitcoindevkit/bdk](https://github.com/bitcoindevkit/bdk) | `f2528da88b1041bdddf547d677511aea19ad3573` | MIT OR Apache-2.0 | Transitive, through LDK Node's on-chain wallet. Not a direct dependency. |
 | [buildonspark/spark](https://github.com/buildonspark/spark) | `0b3a32a05c9ac06cc411683551dd1f1bde9d0caa` | Apache-2.0 (`LICENSE`) | Research only. Go server and JS SDK; no Rust crate to depend on. |
 | [uma-universal-money-address/protocol](https://github.com/uma-universal-money-address/protocol) | `7bc4e2418fe3df1ac111421451dcdc56dfd1707e` | Apache-2.0 | Research only. Specification documents (UMAD-01…11); an LNURL extension. |
-| [lightsparkdev/grid-api](https://github.com/lightsparkdev/grid-api) | `e78e29b6030b25284665b6bdd8b8e437a0aa4d27` | Apache-2.0 | API design reference only. |
+| [lightsparkdev/grid-api](https://github.com/lightsparkdev/grid-api) | `e78e29b6030b25284665b6bdd8b8e437a0aa4d27` | Apache-2.0 | API design reference only; this pinned audit snapshot has no builder app. Current builder source is separately pinned below. |
 
 Bitcoin Core 29.2 (`bitcoin-29.2-x86_64-linux-gnu.tar.gz`, SHA-256 `1fd58d0a…f9009`, verified against the published `SHA256SUMS`) is used as a binary for regtest; it is not modified or redistributed.
 
@@ -39,7 +39,7 @@ UMA is a set of specification documents extending LNURL-pay with compliance data
 
 ## Grid API
 
-The checked-out repository is documentation only: an OpenAPI source tree plus Mintlify docs (`CLAUDE.md` states "Documentation-only repo (no application code)"). The bundled `openapi.yaml` is generated and is not in the tree; conventions below come from the README and the repository's lint configuration. It is **not** a self-hostable Grid backend.
+The older checked-out audit snapshot is documentation only: an OpenAPI source tree plus Mintlify docs (`CLAUDE.md` states "Documentation-only repo (no application code)"). The bundled `openapi.yaml` is generated and is not in that tree; conventions below come from the README and repository lint configuration. It is **not** a self-hostable Grid backend.
 
 Conventions Safrod adopts (independently implemented, not copied):
 
@@ -49,6 +49,12 @@ Conventions Safrod adopts (independently implemented, not copied):
 - a sandbox environment for integrators.
 
 Differences: Grid signs webhooks with ECDSA P-256 over the body; Safrod uses HMAC-SHA256 over `timestamp.body` with a per-endpoint secret. Safrod uses scoped bearer API keys rather than HTTP Basic. Safrod makes **no** Grid compatibility claim; an optional `grid-compat` adapter would need its own coverage table and tests.
+
+## Flow-builder UI source
+
+The current public `components/grid-visualizer` app was checked out separately at Lightspark `grid-api` commit `48dbcbf5f4fd0ebad36b9682726bf6f2b33b49da`, licensed Apache-2.0. The adapted app is isolated in `dashboard/flow-builder-ui`, with the upstream [`LICENSE`](../dashboard/flow-builder-ui/LICENSE) and [`UPSTREAM-NOTICE.md`](../dashboard/flow-builder-ui/UPSTREAM-NOTICE.md) retained.
+
+The adaptation reuses the split-pane layout, React components, Sass modules, Origin design tokens, motion, and selector/diagram/code-panel interactions. Safrod selection data and API recipes replace the Grid behavior and brand. It uses the same framework stack on supported releases: Next.js 16, React 19, TypeScript, Sass, `@lightsparkdev/origin`, Motion, Torph, and ISC-licensed Lucide icons. Central Icons were excluded because their package requires a paid key and forbids public redistribution. Suisse Intl font files are not bundled; Safrod uses system font stacks. It emits Safrod examples only and makes no Grid compatibility claim.
 
 ## Licensing decision
 

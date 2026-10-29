@@ -1,0 +1,331 @@
+@use '@lightsparkdev/origin/tokens/text-styles' as *;
+
+.wrapper {
+  position: relative;
+}
+
+.card {
+  corner-shape: squircle;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 200px;
+  background: var(--surface-base);
+  border: var(--stroke-xs) solid var(--border-tertiary);
+  border-radius: var(--corner-radius-md);
+  overflow: clip;
+  transition: border-color 150ms ease, background 150ms ease;
+
+  :global([data-theme='dark']) & {
+    background: var(--surface-primary);
+  }
+
+  &:has(.cardButton:hover) {
+    border-color: var(--border-secondary);
+  }
+}
+
+.cardFilled {
+  // reserved
+}
+
+.cardButton {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 80px;
+  padding: var(--spacing-md);
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  position: relative;
+  transition: background 100ms ease;
+
+  .cardFilled & {
+    border-bottom: var(--stroke-xs) solid var(--color-alpha-black-10);
+
+    :global([data-theme='dark']) & {
+      border-bottom-color: var(--color-alpha-white-10);
+    }
+  }
+
+  .cardFilled &:hover {
+    background: var(--color-alpha-black-04);
+
+    :global([data-theme='dark']) & {
+      background: var(--color-alpha-white-04);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--text-primary);
+    outline-offset: -2px;
+  }
+
+  &:active {
+    transform: scale(0.99);
+
+    .cardFilled & {
+      transform: none;
+    }
+  }
+}
+
+.container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.iconBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--surface-primary);
+  border: var(--stroke-xs) solid var(--border-tertiary);
+  border-radius: var(--corner-radius-sm);
+  color: var(--icon-primary);
+  flex-shrink: 0;
+
+  :global([data-theme='dark']) & {
+    background: var(--color-gray-925);
+  }
+
+  svg path {
+    stroke-width: 2;
+  }
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.label {
+  @include label;
+  color: var(--text-primary);
+  font-feature-settings: 'salt' 1;
+}
+
+.hint {
+  @include body;
+  color: var(--text-secondary);
+  font-feature-settings: 'salt' 1;
+}
+
+.flagBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--surface-primary);
+  border: var(--stroke-xs) solid var(--border-tertiary);
+  border-radius: var(--corner-radius-sm);
+  flex-shrink: 0;
+  overflow: hidden;
+
+  :global([data-theme='dark']) & {
+    background: var(--color-gray-925);
+  }
+}
+
+.flagImg {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: var(--corner-radius-round);
+  corner-shape: round;
+  object-fit: cover;
+}
+
+.filledContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.currencyName {
+  @include label;
+  color: var(--text-primary);
+  font-feature-settings: 'salt' 1;
+}
+
+.currencyCode {
+  @include body;
+  color: var(--text-secondary);
+  font-feature-settings: 'salt' 1;
+}
+
+// Property rows — below the currency header
+.propertyRows {
+  overflow: hidden;
+}
+
+.propertyRow {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 20px;
+  border-top: var(--stroke-xs) solid var(--border-tertiary);
+  cursor: pointer;
+  transition: background 100ms ease;
+
+  &:first-child {
+    border-top: none;
+  }
+
+  &:hover {
+    background: var(--color-alpha-black-04);
+
+    :global([data-theme='dark']) & {
+      background: var(--color-alpha-white-04);
+    }
+  }
+}
+
+.propertyRowStatic {
+  cursor: default;
+  padding-right: 20px;
+
+  &:hover {
+    background: transparent;
+
+    :global([data-theme='dark']) & {
+      background: transparent;
+    }
+  }
+}
+
+.propertyLabel {
+  @include body-sm;
+  color: var(--text-secondary);
+  font-feature-settings: 'salt' 1;
+}
+
+.propertyValue {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  @include label-sm;
+  color: var(--text-primary);
+  font-feature-settings: 'salt' 1;
+}
+
+.propertyChevron {
+  display: flex;
+  color: var(--icon-tertiary);
+
+  svg path {
+    vector-effect: non-scaling-stroke;
+  }
+}
+
+// Network dropdown styles (reused from property row)
+.networkMenuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.networkMenuPortal {
+  position: fixed;
+  min-width: 160px;
+  background: var(--surface-base);
+  border: var(--stroke-xs) solid var(--border-tertiary);
+  border-radius: var(--corner-radius-sm);
+  corner-shape: squircle;
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-3xs);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3xs);
+
+  :global([data-theme='dark']) & {
+    background: var(--surface-primary);
+  }
+}
+
+.networkMenuItem {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--corner-radius-xs);
+  cursor: pointer;
+  @include label-sm;
+  color: var(--text-primary);
+  font-feature-settings: 'salt' 1;
+  transition: background 100ms ease;
+
+  &:hover {
+    background: var(--surface-elevated);
+  }
+}
+
+.networkMenuItemActive {
+  background: var(--surface-secondary);
+}
+
+.networkMenuIcon {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--corner-radius-round);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+// Chevron between cards
+.chevron {
+  all: unset;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-primary);
+  border: var(--stroke-xs) solid var(--border-tertiary);
+  border-radius: var(--corner-radius-round);
+  corner-shape: round;
+  color: var(--text-secondary);
+  z-index: 1;
+  pointer-events: none;
+
+  svg path {
+    vector-effect: non-scaling-stroke;
+  }
+}
+
+.chevronInteractive {
+  pointer-events: auto;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+
+  &:hover {
+    background: var(--surface-elevated);
+    border-color: var(--border-secondary);
+    color: var(--text-primary);
+  }
+
+  &:active {
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+}
