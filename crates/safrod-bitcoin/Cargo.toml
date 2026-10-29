@@ -1,0 +1,18 @@
+[package]
+name = "safrod-bitcoin"
+description = "Bitcoin Core RPC client and on-chain deposit watcher for Safrod"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+safrod-core = { path = "../safrod-core" }
+safrod-storage = { path = "../safrod-storage" }
+reqwest.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["raw_value"] }
+thiserror.workspace = true
+tracing.workspace = true
+tokio.workspace = true
