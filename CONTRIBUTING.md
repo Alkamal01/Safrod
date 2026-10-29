@@ -1,29 +1,37 @@
-# Contributing to Safro
+# Contributing to Safrod
 
-Thank you for contributing. Safro handles settlement logic, so correctness, clear failure behaviour, and reviewability take priority over feature count.
+Safrod handles payment state, so correctness, clear failure behaviour and reviewability take priority over feature count.
 
 ## Local checks
 
-Run these commands before opening a pull request:
-
 ```bash
-cargo fmt --check
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test --all
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+DATABASE_URL=postgres://user@127.0.0.1:5432/postgres cargo test --workspace
+(cd examples/merchant && node --test)
 ```
+
+Database tests use `sqlx::test`, which creates a throwaway database per test, so the user needs `CREATEDB`. Changes that touch Lightning, Bitcoin Core, webhooks or the sandbox should also pass `scripts/dev-native.sh start && scripts/setup.sh && scripts/demo.sh all` (see [`docs/demo.md`](docs/demo.md)).
 
 ## Pull requests
 
-Keep each pull request focused and explain the settlement behaviour it changes. Changes that affect state transitions, persistence, quote verification, attestations, idempotency, Lightning release, or fiat payouts should include tests for success and failure paths.
+Open an issue before large design changes. Keep each pull request focused and explain the behaviour it changes and how you tested it. Changes to state transitions, idempotency, event handling, persistence, webhook delivery or signing need tests for the success and failure paths. Report test results honestly: say which commands you ran and which you could not.
 
-Do not add credentials, signing keys, provider secrets, or customer data to the repository. Use development fixtures only for local testing.
+Do not add credentials, signing keys, provider secrets or customer data. Use the fake values in `.env.example`.
 
 ## Design principles
 
-- Never release Lightning based on an unauthenticated or unauthorized payout claim.
-- Treat an ambiguous payout outcome as unknown until it is reconciled.
-- Make external requests idempotent.
-- Validate a state transition before performing its side effect.
-- Preserve enough durable evidence to recover safely after a restart.
+- Never infer settlement from an HTTP response; settle on a node event or a reconciled node record.
+- Treat an ambiguous outcome as `unknown` until it is reconciled. A timeout is not a failure.
+- Make external requests idempotent, and make event handlers safe to run twice.
+- Validate a state transition before performing its side effect, and write a state change and its notification in one transaction.
+- Use integer satoshis and millisatoshis; no floating-point money.
+- Treat peer messages, user input, webhooks and external API responses as untrusted.
+- Label simulated behaviour as simulated, everywhere it is visible.
+- Do not claim a capability that was not run end to end.
 
-For security-sensitive reports, use the process in [SECURITY.md](SECURITY.md) instead of filing a public issue.
+## Code style
+
+Prefer small, explicit types and ordinary control flow. Comments explain why, invariants and non-obvious protocol behaviour, not what a line does. Commit messages are specific and human, for example `lightning: persist settled invoice events`.
+
+For security-sensitive reports, use [`SECURITY.md`](SECURITY.md) instead of a public issue.
