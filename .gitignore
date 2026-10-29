@@ -3,3 +3,5 @@
 .env
 /data/
 *.log
+.demo/
+node_modules/
