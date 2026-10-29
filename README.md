@@ -1,4 +1,4 @@
-# Safro
+# Safrod
 
 [![CI](https://github.com/Alkamal01/Safrod/actions/workflows/ci.yml/badge.svg)](https://github.com/Alkamal01/Safrod/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/Rust-stable-orange?logo=rust)](https://www.rust-lang.org/)
@@ -6,221 +6,143 @@
 
 **Open-source, self-hostable Bitcoin and Lightning payment infrastructure.**
 
-Safro gives developers a foundation for integrating Bitcoin payments into their applications without building and operating a payment orchestration layer from scratch. It is Rust-first, uses the Lightning Development Kit (LDK) for Lightning functionality, and is designed around clear APIs, observable payment states, and operator control.
+Safrod gives developers a payment backend for Bitcoin and Lightning that they can run and inspect themselves. It is written in Rust, uses LDK Node for Lightning and Bitcoin Core for chain data, and exposes a REST API with observable payment states, signed webhooks and a durable ledger.
 
-> **Project status: hackathon prototype / active development.** This README describes the intended architecture and initial demo scope. Features are not considered implemented or production-ready unless verified in the repository. The demo runs on a local Bitcoin **regtest** network and does not process real funds.
+> **Status: hackathon prototype.** Everything runs on Bitcoin **regtest** and the daemon refuses to start on mainnet. It is not audited and must not hold real funds. [`docs/progress.md`](docs/progress.md) lists what was run end to end and what was only written.
 
 ## Overview
 
-Lightning makes Bitcoin payments fast and inexpensive, but a reliable product on top of it still needs wallets and keys, a Bitcoin connection, channel and liquidity management, durable payment state, failure handling, and a predictable interface for applications. Small teams usually assemble these pieces from several libraries or depend on a hosted provider, which makes the infrastructure hard to self-host, inspect, or customize.
+Lightning makes Bitcoin payments fast and cheap, but a product built on it still needs wallet and key handling, a Bitcoin connection, channel and liquidity management, durable payment state, failure handling and a predictable interface for applications. Small teams usually assemble those from several libraries or depend on a hosted provider, which makes the result hard to self-host, inspect or customise.
 
-Safro targets that application-infrastructure gap: the software between Bitcoin/Lightning primitives and the products people use. It is a modular payment backend that builds on established Bitcoin projects rather than reimplementing the protocol. It is **not** a new blockchain, token, or replacement for Lightning.
+Safrod targets that application-infrastructure gap. It builds on established projects instead of reimplementing them, and it is not a new blockchain, token or replacement for Lightning.
 
-Design goals:
+- **Open and self-hostable.** The whole stack runs from this repository.
+- **Developer experience.** Resource-oriented API, scoped API keys, idempotency keys, one error shape, pagination, an OpenAPI document.
+- **Reliability.** Payment state is durable and every transition is validated. A timeout is never treated as a failure; ambiguous payments become `unknown` and are reconciled, not retried blindly.
+- **Operator control.** The operator runs the node, holds the keys and owns the database. This is *not* a self-custodial wallet for end users.
+- **Modular.** Bitcoin and Lightning are the core. Fiat, FX and cross-border flows exist only as a clearly labelled **simulation** for integration testing.
 
-1. **Open infrastructure:** inspect, run, and extend the software without a proprietary payment backend.
-2. **Developer experience:** consistent payment APIs, explicit status transitions, useful errors, and event notifications.
-3. **Operator control:** node, wallet, and infrastructure operations stay under the deployer's control.
-4. **Reliability:** payment attempts are durable, retries are explicit, and ambiguous outcomes are reconciled rather than guessed.
-5. **Modularity:** Bitcoin and Lightning are the core; other payment capabilities are separate integrations.
+It is for wallet and merchant developers who want a self-hostable payment backend, and for Bitcoin infrastructure contributors.
 
-**Who it is for:** wallet developers, merchants and payment platforms, startups and independent developers who want a self-hostable backend, and Bitcoin infrastructure contributors. The initial focus is developers and operators; end-user apps integrate through the API.
+**What Safrod does not do:** real NGN/KES or other fiat payouts, FX execution, KYC/AML, stable-value guarantees, atomic fiat settlement or mainnet support. Sandbox endpoints are simulations and say so in every response.
 
-## Scope and capabilities
+## What works today
 
-| Area | Intended capability | Initial scope |
-| --- | --- | --- |
-| Lightning payments | Create invoices, send payments, inspect outcomes | **Core demo target** |
-| Bitcoin on-chain | Wallet operations, receive addresses, broadcast and track transactions | **Core integration target** |
-| Payment engine | Persist payment intents, states, and attempts | **Core demo target** |
-| Developer interface | REST API and event/webhook interface | **Core demo target** |
-| Node operations | Lightning node status and basic operational visibility | **Core demo target** |
-| Liquidity | Channel balance and payment-capacity visibility | Initial monitoring |
-| Dashboard | Operator-facing transaction and node overview | Optional demo component |
-| SDKs | Typed client libraries | Post-prototype |
-| Fiat and FX | Provider adapters, quotes, and payout integrations | Future module |
-| Cross-border payments | Settlement orchestration across providers | Future module |
-| Escrow | Conditional release, refund, and dispute workflows | Future module; not in the initial demo |
-| Stable-value payments | Fiat-denominated payment integrations and risk controls | Research / future module |
+| Area | Status |
+| --- | --- |
+| Two independent LDK Node nodes with a real channel on regtest | working |
+| Lightning invoices, payments, events, idempotency, failure and `unknown` handling | working |
+| On-chain deposit address and confirmation tracking via Bitcoin Core | working |
+| Signed webhooks (outbox, retry, replay, SSRF guard) | working |
+| Scoped API keys, operator token, OpenAPI, dashboard | working |
+| Simulated quotes and payouts (success, failure, timeout) with a real regtest BTC leg | simulated |
+| Docker Compose stack, GitHub Actions run | written, not yet run |
 
-Lightning transfers BTC. It does not by itself provide local-currency payouts, exchange-rate guarantees, or protection from Bitcoin price volatility.
+The detailed matrix is in [`docs/architecture.md`](docs/architecture.md).
 
 ## Architecture
 
 ```mermaid
-flowchart TD
-    A[Wallets, merchant apps, developer clients] --> B[Safro REST API]
-    B --> C[Payment engine]
-    C --> D[Lightning service - LDK]
-    C --> E[On-chain wallet service - BDK]
-    C --> F[(PostgreSQL)]
-    C --> G[Events and webhooks]
-    D --> H[Bitcoin and Lightning peers]
-    E --> I[Bitcoin Core / regtest]
-    D --> I
-    J[Operator monitoring] --> B
+flowchart LR
+    M[Merchant app / API client] -->|REST + API key| API[safrod-api]
+    API --> DB[(PostgreSQL)]
+    API --> LN[safrod-lightning<br/>LDK Node]
+    API --> BTC[safrod-bitcoin<br/>Bitcoin Core RPC]
+    LN <--> PEER[Second Lightning node]
+    LN --> CORE[Bitcoin Core regtest]
+    BTC --> CORE
+    DB --> OUT[Webhook outbox]
+    OUT --> W[safrod-webhooks]
+    W -->|signed POST| M
+    API --> SBX[safrod-sandbox<br/>simulated fiat]
 ```
 
-**API layer.** Validates requests, authenticates callers, exposes payment operations, and returns stable identifiers. Applications do not need direct access to node internals.
+| Crate | Role |
+| --- | --- |
+| `safrod-core` | ids, integer money types, state machines, API keys, webhook signing |
+| `safrod-storage` | PostgreSQL schema, repositories, outbox |
+| `safrod-lightning` | backend trait, LDK Node adapter, in-memory mock |
+| `safrod-bitcoin` | Bitcoin Core RPC client, deposit watcher |
+| `safrod-webhooks` | signed delivery worker, SSRF guard |
+| `safrod-sandbox` | deterministic simulated quotes and payouts |
+| `safrod-api` | Axum router, auth, payment engine, OpenAPI |
+| `safrod` | the daemon |
+| `examples/merchant` | example merchant app (Node) |
+| `legacy/settlement` | the first-iteration Core Lightning settlement prototype, kept for reference |
 
-**Payment engine.** Owns the application-level payment lifecycle: records attempts and outcomes, applies idempotency rules, and coordinates notifications. It must not report a payment as settled before the underlying payment system confirms settlement.
-
-**Lightning service.** Integrates LDK for invoices, payments, channel state, and events. LDK is a library; a reliable node also needs networking, persistence, chain monitoring, and wallet integration.
-
-**On-chain wallet service.** Uses BDK and Bitcoin Core for wallet operations and blockchain access. Key ownership and responsibilities must be explicit.
-
-**Persistence and events.** PostgreSQL stores application state and event delivery records, which is essential for safe restarts and reconciliation.
-
-**Optional modules.** Fiat adapters, FX, cross-border orchestration, stable-value products, and escrow are deliberately outside the initial core.
-
-**Trust boundaries.** Self-hosting gives operators control of their deployment; it does not automatically make an application non-custodial. Custody depends on how keys, funds, and payment authorization are implemented. Bank, fiat-provider, and other network integrations bring their own trust and compliance requirements.
+Read [`docs/architecture.md`](docs/architecture.md), [`docs/adr/0001-lightning-node-choice.md`](docs/adr/0001-lightning-node-choice.md) and [`docs/upstream-audit.md`](docs/upstream-audit.md) for the design, the LDK Node versus rust-lightning trade-off and the upstream commits and licenses inspected.
 
 ## Payment lifecycle
 
-**Receiving a Lightning payment**
+**Receiving.** The API asks the node for a BOLT11 invoice and stores it `open`. When LDK Node reports `PaymentReceived`, the event is recorded under a dedupe key, the invoice becomes `paid`, an `invoice.paid` event and its webhook deliveries are written in the same database transaction, and only then is the node event acknowledged.
 
-1. An application requests an invoice through Safro.
-2. Safro asks the Lightning service to create the invoice and records its identifier.
-3. The application presents the invoice to the payer.
-4. LDK reports the payment outcome to the backend.
-5. Safro persists the result and exposes it through the API and event notifications.
-
-**Sending a Lightning payment**
-
-1. The application submits a payment request with a stable idempotency key.
-2. Safro validates the request and records a payment attempt.
-3. The Lightning service attempts the payment through LDK.
-4. Safro tracks the attempt until a definitive success or failure is known.
-5. The application reads the final state or receives a webhook.
-
-A timeout from the API is **not** proof that a Lightning payment failed. Clients should query the existing payment before submitting a new attempt.
+**Sending.** The client supplies an `Idempotency-Key`. Safrod stores the payment as `created`, then `pending`, and only then asks the node to send. `PaymentSuccessful` and `PaymentFailed` make it final. After a restart, in-flight payments are reconciled against the node; if the node has no answer the payment is `unknown`, never `failed`.
 
 ```text
-CREATED -> PENDING -> SUCCEEDED
-                  \-> FAILED
+created -> pending -> succeeded
+                  \-> failed
+                  \-> unknown -> succeeded | failed
 ```
 
-The implementation must distinguish retryable attempts from final outcomes and reconcile interrupted operations after restart. State names and API fields are not a public contract until finalized against the code.
+A client timeout is not proof that a payment failed. Retry with the same `Idempotency-Key` to read the stored payment.
 
-## Technology
+## Run it
 
-| Layer | Technology | Role |
-| --- | --- | --- |
-| Language | Rust | Backend services and payment logic |
-| Lightning | [LDK / rust-lightning](https://github.com/lightningdevkit/rust-lightning) | Lightning protocol integration |
-| Bitcoin wallet | [BDK](https://github.com/bitcoindevkit/bdk) | Wallet building blocks |
-| Bitcoin node | [Bitcoin Core](https://github.com/bitcoin/bitcoin) | Blockchain validation and RPC |
-| Persistence | PostgreSQL | Payment and event records |
-| Packaging | Docker | Reproducible local services |
-| Test network | Bitcoin regtest | Local testing without real funds |
-| Client interface | REST / JSON, webhooks | Application integration |
-
-The web framework, database schema, and SDK choices should follow the implementation rather than be claimed in advance.
-
-## Local development and demo
-
-**Network:** Bitcoin regtest, a local Bitcoin network where blocks are mined on demand. It is distinct from mainnet, public testnet, and simulated payment mocks.
-
-**Prerequisites:** Rust toolchain (`rustup`, `cargo`), Docker and Docker Compose, Git, and a local Bitcoin Core regtest node or the project's containerized regtest environment.
+Needs Rust, Docker or (without Docker) `bitcoind`, Node 20, `psql` and a PostgreSQL server. Full instructions, expected output and reset steps are in [`docs/demo.md`](docs/demo.md).
 
 ```bash
-git clone https://github.com/Alkamal01/Safrod.git
-cd Safrod
-
-cargo fmt --all -- --check
-cargo test --workspace
+make up && make setup && make demo     # Docker Compose (see status above)
+make reset                             # clean slate
 ```
 
-> **Maintainer TODO:** add a tested, copy-pasteable command sequence that starts regtest, the Safro service, and the demo client, plus any `.env.example` and migrations. Never commit real secrets.
+Native, without Docker (this is the path that has been run end to end):
 
-A reproducible demonstration should show:
+```bash
+export BITCOIN_BIN=/path/to/bitcoin/bin SAFROD_DEV_PG_URL=postgres://user@127.0.0.1:5432
+cargo build -p safrod
+scripts/dev-native.sh start && scripts/setup.sh && scripts/demo.sh all
+```
 
-1. Starting the local Bitcoin regtest environment.
-2. Starting the Safro service and its Lightning dependencies.
-3. Creating a Lightning invoice through the API.
-4. Paying the invoice from a separate local Lightning participant.
-5. Observing the payment transition to a settled state.
-6. Receiving or querying the resulting confirmation event.
-7. Demonstrating at least one failure or restart-recovery scenario.
+The demos: **1** real Lightning (invoice, second node pays, event, webhook, merchant shows paid), **2** on-chain deposit with confirmations, **3** simulated fiat/FX sandbox with real regtest BTC settlement, plus restart recovery. Each script asserts its outcome.
 
-> **Demo evidence:** add a link to a recorded walkthrough, sample requests/responses, and passing CI results when available. Do not label a flow complete until it has been exercised end to end.
+## API
 
-## API design
-
-The intended API is resource-oriented and centered on stable identifiers. These endpoint shapes are **illustrative**, not a claim that they exist:
+Interactive docs at `/docs`, raw document at `/openapi.json`, conventions and examples in [`docs/api.md`](docs/api.md).
 
 ```http
-POST /v1/lightning/invoices
-POST /v1/lightning/payments
-GET  /v1/payments/{payment_id}
-GET  /v1/node/status
-GET  /v1/channels
+POST /v1/lightning/invoices          POST /v1/lightning/payments
+GET  /v1/lightning/invoices/{id}     GET  /v1/lightning/payments/{id}
+POST /v1/bitcoin/addresses           GET  /v1/bitcoin/transactions/{id}
+GET  /v1/balances   GET /v1/events   POST /v1/webhook-endpoints
+POST /v1/sandbox/quotes              POST /v1/sandbox/payouts    # simulated
+GET  /healthz       GET /readyz      GET  /dashboard
 ```
 
-Clients should be able to request invoices and payments with validated inputs, retrieve state by stable ID, retry safely with idempotency keys, receive signed and retryable event notifications, and distinguish validation errors, temporary infrastructure failures, and final payment failures.
+The API is original. It borrows general conventions from public API design (typed statuses, request identifiers, signed webhooks) and makes no compatibility claim with any third-party API.
 
-Authentication, rate limits, pagination, webhook verification, and versioning must be specified and tested before any public deployment.
+## Configuration
 
-## Reliability and security
-
-- **No silent duplicate payments:** retries must not create unintended additional transfers.
-- **Durable state:** attempts and outcomes survive process restarts.
-- **Explicit monetary units:** integer amounts, with satoshis and millisatoshis kept distinct.
-- **No secret leakage:** never log seeds, private keys, payment preimages, API credentials, or sensitive user data.
-- **Verified outcomes:** settlement is never inferred from an HTTP response alone.
-- **Minimal privileges:** isolate wallet keys, administrative operations, and client permissions.
-- **Fail safely:** surface uncertain outcomes and reconcile them before retrying external financial actions.
-- **Threat modeling:** document trust boundaries, operator assumptions, and third-party integration risks.
-
-The prototype is **not audited** and must not be used to hold or process real funds.
-
-## Roadmap
-
-Roadmap items are planned work, not shipped functionality.
-
-| Milestone | Focus | Evidence of completion |
-| --- | --- | --- |
-| **v0.1: Local payment prototype** | Regtest environment, Lightning send/receive, durable payment state, basic API | Reproducible end-to-end demo and tests |
-| **v0.2: Operator experience** | Node and channel monitoring, webhook delivery, documentation | Operator demo and integration examples |
-| **v0.3: Developer tooling** | SDKs, stronger API contracts, integration test harness | Published examples and compatibility tests |
-| **v0.4: Payment extensions** | Evaluate Spark/UMA integrations and optional fiat-adapter interfaces | Documented proof of concept and trust model |
-| **Later** | FX, cross-border orchestration, stable-value flows, conditional payments | Separate design proposals, security reviews, real-world validation |
-
-New modules are added only when they solve validated problems and do not weaken the reliability of the core.
-
-## How we evaluate the prototype
-
-| Criterion | What to demonstrate |
-| --- | --- |
-| Functionality | A real regtest Lightning payment initiated and observed through Safro |
-| Correctness | Tests for success, failure, duplicate requests, and restart recovery |
-| Developer experience | Clear setup, example requests, and useful error responses |
-| Self-hosting | A reproducible local deployment without a proprietary payment backend |
-| Observability | Payment status, logs, and events without exposing secrets |
-| Open-source quality | Readable Rust code, tests, CI, contribution docs, and license |
-
-**Results:** add measured results, demo links, test logs, and limitations after running the prototype. Avoid unverified claims about performance, cost, reliability, or adoption.
-
-## Contributing
-
-Contributions, issue reports, tests, and documentation improvements are welcome. Open an issue before substantial design changes, keep changes focused, add regression tests for bug fixes where practical, and explain the problem, approach, trade-offs, and testing.
-
-```bash
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full process. Review and release decisions remain with the maintainers.
+Environment variables, with fake development values in [`.env.example`](.env.example): `SAFROD_DATABASE_URL`, `SAFROD_BITCOIN_RPC_URL/_USER/_PASSWORD`, `SAFROD_ADMIN_TOKEN` (24+ chars; the admin API is off without it), `SAFROD_BIND` (loopback by default), `SAFROD_LDK_STORAGE_DIR`, `SAFROD_LDK_LISTEN`, `SAFROD_REQUIRED_CONFIRMATIONS`. Development switches `SAFROD_ENABLE_DEV_ENDPOINTS` and `SAFROD_WEBHOOK_ALLOW_PRIVATE` exist for the demo stack and are refused or off by default. Secrets belong in the environment or a secret manager, never in the repository.
 
 ## Security
 
-Do not publicly disclose exploitable vulnerabilities before maintainers have had a reasonable opportunity to investigate. Follow the private reporting process in [SECURITY.md](SECURITY.md).
+Read [`docs/threat-model.md`](docs/threat-model.md) before running this anywhere you care about. The short version: unaudited; operator-custodied keys stored unencrypted at rest; webhook secrets stored in clear; no TLS, rate limiting or per-project spending limits; shared node liquidity across projects. Report vulnerabilities privately as described in [`SECURITY.md`](SECURITY.md).
+
+## Development
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+DATABASE_URL=postgres://user@127.0.0.1:5432/postgres cargo test --workspace   # needs CREATEDB
+(cd examples/merchant && node --test)
+```
+
+CI runs the same checks plus `cargo deny` and a regtest end-to-end job. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+## Roadmap
+
+Planned, not shipped: per-project spending limits, rate limiting and TLS guidance, encrypted webhook secrets, reorg handling for deposits, a typed client generated from the OpenAPI document, an optional compatibility adapter with a precise coverage table, and evaluation of Spark and UMA integrations behind disabled-by-default flags. See [`docs/implementation-plan.md`](docs/implementation-plan.md).
 
 ## License
 
-Safro is dual-licensed under MIT or Apache-2.0, at your option. The package manifest declares the license; the full license texts will be added before the first public release.
-
----
-
-**Safro's aim:** make Bitcoin and Lightning payment infrastructure easier to run, understand, and integrate, while keeping the core open and under developers' control.
+Dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option. All direct and transitive dependencies are MIT, Apache-2.0 or similarly permissive; the allow-list and the one file-level copyleft exception (MPL-2.0 `webpki-roots`, unmodified) are in [`deny.toml`](deny.toml). Third-party attribution and the upstream audit are in [`docs/upstream-audit.md`](docs/upstream-audit.md). Pinned dependency versions are in `Cargo.lock`.
