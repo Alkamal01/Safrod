@@ -13,6 +13,8 @@ pub enum StorageError {
         from: &'static str,
         to: &'static str,
     },
+    #[error("insufficient simulated balance")]
+    InsufficientBalance,
     #[error("amount out of range")]
     AmountOutOfRange,
     #[error("database error: {0}")]

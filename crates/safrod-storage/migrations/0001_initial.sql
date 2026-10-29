@@ -148,6 +148,9 @@ create table sandbox_payouts (
     quote_id        text not null references sandbox_quotes(id) unique,
     idempotency_key text not null,
     scenario        text not null check (scenario in ('success', 'failure', 'timeout')),
+    -- Lightning invoice from the destination node, paid for real on regtest
+    -- only after the simulated payout is confirmed.
+    settlement_bolt11 text,
     status          text not null check (status in ('reserved', 'pending', 'succeeded', 'failed', 'unknown')),
     payment_id      text references outgoing_payments(id),
     created_at      timestamptz not null default now(),

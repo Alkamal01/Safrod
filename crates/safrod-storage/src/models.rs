@@ -162,6 +162,7 @@ pub struct PayoutRecord {
     pub quote_id: String,
     pub idempotency_key: String,
     pub scenario: String,
+    pub settlement_bolt11: Option<String>,
     pub status: String,
     pub payment_id: Option<String>,
     pub created_at: DateTime<Utc>,

@@ -70,6 +70,7 @@ impl Db {
         quote_id: &str,
         idempotency_key: &str,
         scenario: &str,
+        settlement_bolt11: Option<&str>,
     ) -> Result<(PayoutRecord, bool), StorageError> {
         let mut tx = self.pool.begin().await?;
         let prior: Option<PayoutRecord> = sqlx::query_as(
@@ -98,6 +99,17 @@ impl Db {
                 to: "reserved",
             });
         }
+        let (balance,): (i64,) = sqlx::query_as(
+            "select coalesce((select minor from sandbox_balances
+                              where project_id = $1 and currency = $2 for update), 0)",
+        )
+        .bind(project_id)
+        .bind(&quote.source_currency)
+        .fetch_one(&mut *tx)
+        .await?;
+        if balance < quote.source_minor {
+            return Err(StorageError::InsufficientBalance);
+        }
         sqlx::query("update sandbox_quotes set status = 'used' where id = $1")
             .bind(&quote.id)
             .execute(&mut *tx)
@@ -112,14 +124,16 @@ impl Db {
         .execute(&mut *tx)
         .await?;
         let payout: PayoutRecord = sqlx::query_as(
-            "insert into sandbox_payouts (id, project_id, quote_id, idempotency_key, scenario, status)
-             values ($1, $2, $3, $4, $5, 'reserved') returning *",
+            "insert into sandbox_payouts
+               (id, project_id, quote_id, idempotency_key, scenario, settlement_bolt11, status)
+             values ($1, $2, $3, $4, $5, $6, 'reserved') returning *",
         )
         .bind(PayoutId::new().as_str())
         .bind(project_id)
         .bind(quote_id)
         .bind(idempotency_key)
         .bind(scenario)
+        .bind(settlement_bolt11)
         .fetch_one(&mut *tx)
         .await?;
         emit(

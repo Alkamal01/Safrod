@@ -280,23 +280,26 @@ async fn stale_or_reused_quote_is_refused(pool: PgPool) {
         btc_amount_msat: 100_000,
         expires_at,
     };
+    db.credit_sandbox_balance(&project, "NGN", 1_000_000)
+        .await
+        .unwrap();
     let fresh = db
         .insert_quote(quote(Utc::now() + Duration::minutes(5)))
         .await
         .unwrap();
     let (payout, created) = db
-        .reserve_payout(&project, &fresh.id, "p1", "success")
+        .reserve_payout(&project, &fresh.id, "p1", "success", None)
         .await
         .unwrap();
     assert!(created);
     let (same, created) = db
-        .reserve_payout(&project, &fresh.id, "p1", "success")
+        .reserve_payout(&project, &fresh.id, "p1", "success", None)
         .await
         .unwrap();
     assert!(!created);
     assert_eq!(same.id, payout.id);
     assert!(matches!(
-        db.reserve_payout(&project, &fresh.id, "p2", "success")
+        db.reserve_payout(&project, &fresh.id, "p2", "success", None)
             .await
             .err()
             .unwrap(),
@@ -308,7 +311,69 @@ async fn stale_or_reused_quote_is_refused(pool: PgPool) {
         .await
         .unwrap();
     assert!(matches!(
-        db.reserve_payout(&project, &stale.id, "p3", "success")
+        db.reserve_payout(&project, &stale.id, "p3", "success", None)
+            .await
+            .err()
+            .unwrap(),
+        StorageError::IllegalTransition { .. }
+    ));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn reservation_needs_balance_and_failure_refunds_it(pool: PgPool) {
+    use safrod_core::state::PayoutStatus;
+    let (db, project) = setup(pool).await;
+    let quote = db
+        .insert_quote(NewQuote {
+            project_id: project.clone(),
+            source_currency: "NGN".into(),
+            target_currency: "KES".into(),
+            source_minor: 500_000,
+            target_minor: 30_000,
+            rate_ppm: 60_000,
+            btc_amount_msat: 100_000,
+            expires_at: Utc::now() + Duration::minutes(5),
+        })
+        .await
+        .unwrap();
+    assert!(matches!(
+        db.reserve_payout(&project, &quote.id, "p1", "failure", None)
+            .await
+            .err()
+            .unwrap(),
+        StorageError::InsufficientBalance
+    ));
+
+    db.credit_sandbox_balance(&project, "NGN", 600_000)
+        .await
+        .unwrap();
+    let (payout, _) = db
+        .reserve_payout(&project, &quote.id, "p1", "failure", None)
+        .await
+        .unwrap();
+    assert_eq!(
+        db.sandbox_balances(&project).await.unwrap(),
+        [("NGN".to_string(), 100_000)]
+    );
+
+    db.advance_payout(&payout.id, PayoutStatus::Pending)
+        .await
+        .unwrap();
+    db.advance_payout(&payout.id, PayoutStatus::Failed)
+        .await
+        .unwrap();
+    assert_eq!(
+        db.sandbox_balances(&project).await.unwrap(),
+        [("NGN".to_string(), 600_000)]
+    );
+
+    let (_, changed) = db
+        .advance_payout(&payout.id, PayoutStatus::Failed)
+        .await
+        .unwrap();
+    assert!(!changed);
+    assert!(matches!(
+        db.advance_payout(&payout.id, PayoutStatus::Succeeded)
             .await
             .err()
             .unwrap(),
